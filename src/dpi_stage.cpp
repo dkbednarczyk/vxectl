@@ -10,12 +10,17 @@ namespace DPIStage {
             0x00,
             0x00,
             0x06,
+
+            // magic bits for DPI stage
             0x01,
             0x54,
             0x04,
             0x51,
+
+            // set DPI stage index
             static_cast<uint8_t>(dpi_stage),
             static_cast<uint8_t>(0x55 - dpi_stage),
+
             0x00,
             0x00,
             0x00,

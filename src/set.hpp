@@ -1,13 +1,14 @@
 #pragma once
 
 #include <CLI/CLI.hpp>
-#include "hidapi.h"
+#include "device.hpp"
 
 namespace SetCommand {
     struct SetOptions {
-        uint8_t dpi_stage;
+        int polling_rate;
+        int dpi_stage;
     };
 
-    void setup(CLI::App &app, hid_device* device);
+    void setup(CLI::App &app, Device &device);
 } // namespace SetCommand
 

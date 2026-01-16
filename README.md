@@ -10,7 +10,7 @@ The goal is to have full feature parity with the [web interface](https://v3-hub.
 ## Support
 - [x] DPI stages
 - [ ] DPI setting per-stage
-- [ ] Polling rate
+- [x] Polling rate
 - [ ] Sensor sampling rate
 - [ ] Debouce time
 - [ ] Sleep time

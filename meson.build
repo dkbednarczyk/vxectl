@@ -11,7 +11,7 @@ dependencies = [
   dependency('CLI11', required : true),
 ]
 
-source_files = files('src/vxectl.cpp', 'src/dpi_stage.cpp', 'src/set.cpp')
+source_files = files('src/vxectl.cpp', 'src/dpi_stage.cpp', 'src/polling_rate.cpp', 'src/set.cpp')
 
 executable(
   'vxectl',
