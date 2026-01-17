@@ -49,4 +49,14 @@ impl Device {
         self.hid.send_feature_report(report)?;
         Ok(())
     }
+
+    pub fn write(&self, data: &[u8]) -> Result<usize> {
+        let size = self.hid.write(data)?;
+        Ok(size)
+    }
+
+    pub fn read(&self, buf: &mut [u8]) -> Result<usize> {
+        let size = self.hid.read(buf)?;
+        Ok(size)
+    }
 }

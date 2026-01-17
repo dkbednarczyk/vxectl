@@ -1,3 +1,7 @@
+use crate::device::Device;
+use std::thread;
+use std::time::Duration;
+
 pub fn get_debounce_packet(debounce_ms: u8) -> Vec<u8> {
     vec![
         0x08,
@@ -18,4 +22,21 @@ pub fn get_debounce_packet(debounce_ms: u8) -> Vec<u8> {
         0x55,
         0xEA,
     ]
+}
+
+/// Apply debounce setting to device
+pub fn apply_setting(device: &Device, debounce_str: &str) -> Result<(), String> {
+    let debounce_val: u8 = debounce_str.parse().unwrap();
+    if let 0..=2 = debounce_val {
+        eprintln!("Debounce times under 4 ms are not recommended.");
+    }
+
+    let packet = get_debounce_packet(debounce_val);
+    device
+        .send_feature_report(&packet)
+        .map_err(|e| format!("Failed to send debounce command: {}", e))?;
+
+    println!("Set debounce time to {} ms", debounce_val);
+    thread::sleep(Duration::from_millis(200));
+    Ok(())
 }

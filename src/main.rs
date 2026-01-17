@@ -1,13 +1,12 @@
 mod debounce;
 mod device;
+mod info;
 mod performance;
 mod sensor;
 mod sleep;
 
 use clap::{builder::PossibleValuesParser, value_parser, Parser, Subcommand};
 use device::Device;
-use std::thread;
-use std::time::Duration;
 
 #[derive(Parser)]
 #[command(name = "vxectl")]
@@ -42,6 +41,16 @@ enum Commands {
         #[arg(short = 's', long, value_parser = PossibleValuesParser::new(["30s", "1m", "2m", "3m", "5m", "20m", "25m", "30m"]))]
         sleep: Option<String>,
     },
+
+    /// Get device info
+    #[clap(subcommand)]
+    Info(Info),
+}
+
+#[derive(Subcommand)]
+enum Info {
+    // Get battery status
+    Battery,
 }
 
 fn main() {
@@ -74,83 +83,37 @@ fn main() {
 
             // Send sensor setting first if present
             if let Some(setting_str) = sensor_setting {
-                let setting: u8 = match setting_str.as_str() {
-                    "basic" => 0,
-                    "competitive" => 1,
-                    "max" => 2,
-                    _ => unreachable!(),
-                };
-
-                let packet = sensor::get_magic_packet(setting);
-                match device.send_feature_report(&packet) {
-                    Ok(_) => {
-                        println!("Set sensor setting to {}", setting_str);
-                        thread::sleep(Duration::from_millis(200));
-                    }
-                    Err(e) => eprintln!("Failed to send sensor command: {}", e),
+                if let Err(e) = sensor::apply_setting(&device, &setting_str) {
+                    eprintln!("{}", e);
                 }
             }
 
             // Send debounce setting if present
             if let Some(debounce_str) = debounce {
-                let debounce_val: u8 = debounce_str.parse().unwrap();
-                if let 0..=2 = debounce_val {
-                    eprintln!("Debounce times under 4 ms are not recommended.");
-                }
-
-                let packet = debounce::get_debounce_packet(debounce_val);
-                match device.send_feature_report(&packet) {
-                    Ok(_) => {
-                        println!("Set debounce time to {} ms", debounce_val);
-                        thread::sleep(Duration::from_millis(200));
-                    }
-                    Err(e) => eprintln!("Failed to send debounce command: {}", e),
+                if let Err(e) = debounce::apply_setting(&device, &debounce_str) {
+                    eprintln!("{}", e);
                 }
             }
 
-            // Send combined DPI + polling rate packet last
-            let polling_rate_val = polling_rate.as_ref().map(|s| s.parse::<u16>().unwrap());
-            if let Some(packet) = performance::build_packet(dpi_stage, polling_rate_val) {
-                match device.send_feature_report(&packet) {
-                    Ok(_) => {
-                        if let Some(stage) = dpi_stage {
-                            println!("Set DPI stage to {}", stage);
-                        }
-                        if let Some(rate) = polling_rate_val {
-                            println!("Set polling rate to {} Hz", rate);
-                        }
-                    }
-                    Err(e) => eprintln!("Failed to send configuration command: {}", e),
-                }
+            // Send combined DPI + polling rate packet
+            if let Err(e) = performance::apply_settings(&device, dpi_stage, polling_rate.as_deref())
+            {
+                eprintln!("{}", e);
             }
 
             // Send sleep timeout setting if present
             if let Some(time) = sleep {
-                let tens_of_seconds: u8 = match time.as_str() {
-                    "30s" => 3,
-                    "1m" => 6,
-                    "2m" => 12,
-                    "3m" => 18,
-                    "5m" => 30,
-                    "20m" => 120,
-                    "25m" => 150,
-                    "30m" => 180,
-                    _ => unreachable!(),
-                };
-
-                let packet1 = sleep::get_sleep_packet(tens_of_seconds);
-                match device.send_feature_report(&packet1) {
-                    Ok(_) => {
-                        thread::sleep(Duration::from_millis(200));
-                        let packet2 = sleep::get_second_packet(tens_of_seconds);
-                        match device.send_feature_report(&packet2) {
-                            Ok(_) => println!("Set sleep timeout to {}", time),
-                            Err(e) => eprintln!("Failed to send sleep confirmation: {}", e),
-                        }
-                    }
-                    Err(e) => eprintln!("Failed to send sleep command: {}", e),
+                if let Err(e) = sleep::apply_setting(&device, &time) {
+                    eprintln!("{}", e);
                 }
             }
         }
+        Commands::Info(cmd) => match cmd {
+            Info::Battery => {
+                if let Err(e) = info::get_battery(&device) {
+                    eprintln!("Error retrieving battery info: {}", e);
+                }
+            }
+        },
     }
 }
