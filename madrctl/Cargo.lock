@@ -260,15 +260,6 @@ dependencies = [
  "colored",
  "hidapi",
  "thiserror",
- "vxelib",
-]
-
-[[package]]
-name = "vxelib"
-version = "0.1.0"
-dependencies = [
- "hidapi",
- "thiserror",
 ]
 
 [[package]]

@@ -1,11 +1,3 @@
-mod debounce;
-mod device;
-mod dpi;
-mod info;
-mod performance;
-mod sensor;
-mod sleep;
-
 use anyhow::anyhow;
 use anyhow::Result;
 use std::thread;
@@ -13,6 +5,7 @@ use std::time::Duration;
 
 use clap::{builder::PossibleValuesParser, value_parser, Parser, Subcommand};
 use device::Device;
+use vxelib::*;
 
 #[derive(Parser)]
 #[command(name = "vxectl")]
@@ -114,47 +107,39 @@ fn main() -> Result<()> {
 
             // Send sensor setting first if present
             if let Some(setting_str) = sensor_setting {
-                if let Err(e) = sensor::apply_setting(&device, &setting_str) {
-                    eprintln!("{}", e);
-                }
-
-                thread::sleep(Duration::from_millis(100));
+                sensor::apply_setting(&device, &setting_str)?;
+                thread::sleep(Duration::from_millis(50));
             }
 
             // Send debounce setting if present
             if let Some(debounce_str) = debounce {
-                if let Err(e) = debounce::apply_setting(&device, &debounce_str) {
-                    eprintln!("{}", e);
+                match debounce_str.as_str() {
+                    "0" | "1" | "2" => eprintln!("warning: low debounce values are not recommended"),
+                    _ => (),
                 }
 
-                thread::sleep(Duration::from_millis(100));
+                debounce::apply_setting(&device, &debounce_str)?;
+                thread::sleep(Duration::from_millis(50));
             }
 
             // Send combined DPI + polling rate packet
-            if let Err(e) = performance::apply_settings(&device, dpi_stage, polling_rate.as_deref())
-            {
-                eprintln!("{}", e);
-            }
+            performance::apply_settings(&device, dpi_stage, polling_rate.as_deref())?;
+            thread::sleep(Duration::from_millis(50));
 
             // Send sleep timeout setting if present
             if let Some(time) = sleep {
-                if let Err(e) = sleep::apply_setting(&device, &time) {
-                    eprintln!("{}", e);
-                }
-
-                thread::sleep(Duration::from_millis(100));
+                sleep::apply_setting(&device, &time)?;
+                thread::sleep(Duration::from_millis(50));
             }
         }
         Commands::Info(cmd) => match cmd {
             Info::Battery => {
-                if let Err(e) = info::get_battery(&device) {
-                    eprintln!("Error retrieving battery info: {}", e);
-                }
+                let b = battery::get_battery_info(&device)?;
+                println!("{:?}", b);
             }
             Info::Sensor => {
-                if let Err(e) = info::get_sensor_info(&device) {
-                    eprintln!("Error retrieving sensor info: {}", e);
-                }
+                let s = sensor::get_sensor_info(&device)?;
+                println!("{:?}", s);
             }
         },
         Commands::Dpi(cmd) => match cmd {
@@ -164,10 +149,7 @@ fn main() -> Result<()> {
                 y_dpi,
                 rgb,
             } => {
-                let _ = y_dpi.unwrap_or(x_dpi);
-                if let Err(e) = dpi::apply_dpi_setting(&device, stage, x_dpi, y_dpi, rgb.as_ref()) {
-                    eprintln!("Error setting DPI: {}", e);
-                }
+                dpi::apply_dpi_setting(&device, stage, x_dpi, y_dpi, rgb.as_deref())?;
             }
         },
     }

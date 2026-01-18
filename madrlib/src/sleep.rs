@@ -1,4 +1,5 @@
 use crate::device::Device;
+use crate::{Result, VxeError};
 use std::thread;
 use std::time::Duration;
 
@@ -47,7 +48,7 @@ pub fn get_confirmation_packet(tens_of_seconds: u8) -> Vec<u8> {
 }
 
 /// Apply sleep timeout setting to device
-pub fn apply_setting(device: &Device, time_str: &str) -> Result<(), String> {
+pub fn apply_setting(device: &Device, time_str: &str) -> Result<()> {
     let tens_of_seconds: u8 = match time_str {
         "30s" => 3,
         "1m" => 6,
@@ -57,21 +58,17 @@ pub fn apply_setting(device: &Device, time_str: &str) -> Result<(), String> {
         "20m" => 120,
         "25m" => 150,
         "30m" => 180,
-        _ => unreachable!(),
+        _ => return Err(VxeError::InvalidSleepTimeout(time_str.into())),
     };
 
-    let sleep = get_sleep_packet(tens_of_seconds);
-    device
-        .send_feature_report(&sleep)
-        .map_err(|e| format!("Failed to send sleep command: {}", e))?;
+    let sleep_pkt = get_sleep_packet(tens_of_seconds);
+    device.send_feature_report(&sleep_pkt)?;
 
-    thread::sleep(Duration::from_millis(200));
+    // Device protocol requires a delay between the two packets
+    thread::sleep(Duration::from_millis(50));
 
     let confirmation = get_confirmation_packet(tens_of_seconds);
-    device
-        .send_feature_report(&confirmation)
-        .map_err(|e| format!("Failed to send sleep confirmation: {}", e))?;
+    device.send_feature_report(&confirmation)?;
 
-    println!("Set sleep timeout to {}", time_str);
     Ok(())
 }

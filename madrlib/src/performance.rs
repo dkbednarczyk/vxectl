@@ -3,6 +3,7 @@
 // and can be combined into a single configuration packet.
 
 use crate::device::Device;
+use crate::{Result, VxeError};
 
 /// Get packet for setting DPI stage only
 pub fn get_dpi_packet(dpi_stage: u8) -> Vec<u8> {
@@ -111,26 +112,27 @@ pub fn build_packet(dpi_stage: Option<u8>, polling_rate: Option<u16>) -> Option<
     }
 }
 
-// Apply performance settings to device
+/// Apply performance settings to device
 pub fn apply_settings(
     device: &Device,
     dpi_stage: Option<u8>,
     polling_rate_str: Option<&str>,
-) -> Result<(), String> {
-    let polling_rate_val = polling_rate_str.map(|s| s.parse::<u16>().unwrap());
+) -> Result<()> {
+    let polling_rate = polling_rate_str
+        .map(|rate_str| rate_str.parse::<u16>())
+        .transpose()
+        .map_err(|_| VxeError::InvalidPerformanceSetting("Failed to parse polling rate".into()))?;
 
-    if let Some(packet) = build_packet(dpi_stage, polling_rate_val) {
-        device
-            .send_feature_report(&packet)
-            .map_err(|e| format!("Failed to send configuration command: {}", e))?;
+    if let Some(rate) = polling_rate
+        && !matches!(rate, 125 | 250 | 500 | 1000 | 2000 | 4000 | 8000)
+    {
+        return Err(VxeError::InvalidPerformanceSetting(
+            "Unsupported polling rate".into(),
+        ));
+    }
 
-        if let Some(stage) = dpi_stage {
-            println!("Set DPI stage to {}", stage);
-        }
-
-        if let Some(rate) = polling_rate_val {
-            println!("Set polling rate to {} Hz", rate);
-        }
+    if let Some(packet) = build_packet(dpi_stage, polling_rate) {
+        device.send_feature_report(&packet)?;
     }
 
     Ok(())

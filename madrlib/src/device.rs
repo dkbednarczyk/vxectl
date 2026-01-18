@@ -1,18 +1,9 @@
-use anyhow::Result;
+use crate::{Result, VxeError};
 use hidapi::{HidApi, HidDevice};
-use thiserror::Error;
 
 const VXE_VID: u16 = 0x373b;
 const MADR_WIRED_PID: u16 = 0x103f;
 const MADR_WIRELESS_PID: u16 = 0x1040;
-
-#[derive(Error, Debug)]
-pub enum DeviceError {
-    #[error("Failed to initialize HIDAPI: {0}")]
-    HidApiInit(#[from] hidapi::HidError),
-    #[error("No compatible device found")]
-    DeviceNotFound,
-}
 
 pub struct Device {
     wired: bool,
@@ -20,7 +11,7 @@ pub struct Device {
 }
 
 impl Device {
-    pub fn new() -> Result<Self, DeviceError> {
+    pub fn new() -> Result<Self> {
         let api = HidApi::new()?;
 
         let device_info = api.device_list().find(|x| {
@@ -37,7 +28,7 @@ impl Device {
             });
         }
 
-        Err(DeviceError::DeviceNotFound)
+        Err(VxeError::DeviceNotFound)
     }
 
     pub fn is_wired(&self) -> bool {

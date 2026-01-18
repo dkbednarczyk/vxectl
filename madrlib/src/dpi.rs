@@ -3,7 +3,7 @@
 use std::str::FromStr;
 
 use crate::device::Device;
-use anyhow::Result;
+use crate::{Result, VxeError};
 
 pub struct Rgb {
     r: u8,
@@ -12,17 +12,25 @@ pub struct Rgb {
 }
 
 impl FromStr for Rgb {
-    type Err = anyhow::Error;
+    type Err = VxeError;
 
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
+    fn from_str(s: &str) -> Result<Self> {
         let parts: Vec<&str> = s.split(',').collect();
         if parts.len() != 3 {
-            return Err(anyhow::anyhow!("Invalid RGB format. Expected format: R,G,B"));
+            return Err(VxeError::InvalidRgb(
+                "Invalid RGB format. Expected format: R,G,B".into(),
+            ));
         }
 
-        let r: u8 = parts[0].parse().map_err(|_| anyhow::anyhow!("Invalid R value"))?;
-        let g: u8 = parts[1].parse().map_err(|_| anyhow::anyhow!("Invalid G value"))?;
-        let b: u8 = parts[2].parse().map_err(|_| anyhow::anyhow!("Invalid B value"))?;
+        let r: u8 = parts[0]
+            .parse()
+            .map_err(|_| VxeError::InvalidRgb("Invalid R value".into()))?;
+        let g: u8 = parts[1]
+            .parse()
+            .map_err(|_| VxeError::InvalidRgb("Invalid G value".into()))?;
+        let b: u8 = parts[2]
+            .parse()
+            .map_err(|_| VxeError::InvalidRgb("Invalid B value".into()))?;
 
         Ok(Rgb { r, g, b })
     }
@@ -54,7 +62,7 @@ pub fn read_dpi_stages(device: &Device, packet_index: u8) -> Result<Vec<u8>> {
     let mut buf = [0u8; 17];
     device.read_timeout(&mut buf, 20)?;
 
-    return Ok(buf.to_vec());
+    Ok(buf.to_vec())
 }
 
 pub fn decode_dpi_pair(packet: &[u8]) -> (DpiStage, DpiStage) {
@@ -80,7 +88,6 @@ pub fn decode_dpi_pair(packet: &[u8]) -> (DpiStage, DpiStage) {
     (stage_a, stage_b)
 }
 
-
 pub fn read_rgb_stages(device: &Device, packet_index: u8) -> Result<Vec<u8>> {
     let packet_id = 0x24 + (packet_index * 0x08);
 
@@ -96,7 +103,7 @@ pub fn read_rgb_stages(device: &Device, packet_index: u8) -> Result<Vec<u8>> {
     let mut buf = [0u8; 17];
     device.read_timeout(&mut buf, 20)?;
 
-    return Ok(buf.to_vec());
+    Ok(buf.to_vec())
 }
 
 pub fn decode_rgb_pair(response: &[u8]) -> (Rgb, Rgb) {
@@ -191,7 +198,13 @@ pub fn encode_rgb_pair(packet_index: u8, rgb_a: &Rgb, rgb_b: &Rgb) -> Vec<u8> {
     ]
 }
 
-pub fn apply_dpi_setting(device: &Device, stage: u8, x_dpi: u16, y_dpi: Option<u16>, rgb: Option<&String>) -> Result<()> {
+pub fn apply_dpi_setting(
+    device: &Device,
+    stage: u8,
+    x_dpi: u16,
+    y_dpi: Option<u16>,
+    rgb: Option<&str>,
+) -> Result<()> {
     let packet_index: u8 = (stage as f32 / 2.0).ceil() as u8;
 
     let dpi_stages = read_dpi_stages(device, packet_index)?;
