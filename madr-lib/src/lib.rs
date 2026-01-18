@@ -10,7 +10,7 @@ use thiserror::Error;
 
 /// Unified error type for all vxelib operations
 #[derive(Error, Debug)]
-pub enum VxeError {
+pub enum MadRError {
     #[error("Failed to initialize HIDAPI: {0}")]
     HidApiInit(#[from] hidapi::HidError),
     #[error("No compatible device found")]
@@ -33,4 +33,4 @@ pub enum VxeError {
     InvalidPerformanceSetting(String),
 }
 
-pub type Result<T> = std::result::Result<T, VxeError>;
+pub type Result<T> = std::result::Result<T, MadRError>;

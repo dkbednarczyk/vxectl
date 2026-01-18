@@ -1,5 +1,5 @@
 use crate::device::Device;
-use crate::{Result, VxeError};
+use crate::{Result, MadRError};
 
 #[derive(Debug)]
 pub struct Battery {
@@ -10,7 +10,7 @@ pub struct Battery {
 
 fn parse_battery_report(data: &[u8]) -> Result<Battery> {
     if data.len() != 17 || data[0] != 0x08 || data[1] != 0x04 {
-        return Err(VxeError::InvalidBatteryFormat);
+        return Err(MadRError::InvalidBatteryFormat);
     }
 
     let percentage = data[6];

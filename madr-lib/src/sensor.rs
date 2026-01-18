@@ -1,5 +1,5 @@
 use crate::device::Device;
-use crate::{Result, VxeError};
+use crate::{Result, MadRError};
 
 #[derive(Debug)]
 pub struct Sensor {
@@ -47,7 +47,7 @@ pub fn get_sensor_info(device: &Device) -> Result<Sensor> {
     let mut buf = [0u8; 17];
     device.read_timeout(&mut buf, 20)?;
 
-    Sensor::from_bytes(&buf).ok_or(VxeError::InvalidSensorFormat)
+    Sensor::from_bytes(&buf).ok_or(MadRError::InvalidSensorFormat)
 }
 
 pub fn get_magic_packet(sensor_setting: u8) -> Vec<u8> {
@@ -75,7 +75,7 @@ pub fn get_magic_packet(sensor_setting: u8) -> Vec<u8> {
 /// Apply sensor setting to device
 pub fn apply_setting(device: &Device, setting_str: &str) -> Result<()> {
     let setting = Sensor::setting_from_name(setting_str)
-        .ok_or_else(|| VxeError::InvalidSensorSetting(setting_str.into()))?;
+        .ok_or_else(|| MadRError::InvalidSensorSetting(setting_str.into()))?;
 
     let packet = get_magic_packet(setting);
     device.send_feature_report(&packet)?;

@@ -1,5 +1,5 @@
 use crate::device::Device;
-use crate::{Result, VxeError};
+use crate::{Result, MadRError};
 use std::thread;
 use std::time::Duration;
 
@@ -58,7 +58,7 @@ pub fn apply_setting(device: &Device, time_str: &str) -> Result<()> {
         "20m" => 120,
         "25m" => 150,
         "30m" => 180,
-        _ => return Err(VxeError::InvalidSleepTimeout(time_str.into())),
+        _ => return Err(MadRError::InvalidSleepTimeout(time_str.into())),
     };
 
     let sleep_pkt = get_sleep_packet(tens_of_seconds);

@@ -3,7 +3,7 @@
 // and can be combined into a single configuration packet.
 
 use crate::device::Device;
-use crate::{Result, VxeError};
+use crate::{Result, MadRError};
 
 /// Get packet for setting DPI stage only
 pub fn get_dpi_packet(dpi_stage: u8) -> Vec<u8> {
@@ -121,12 +121,12 @@ pub fn apply_settings(
     let polling_rate = polling_rate_str
         .map(|rate_str| rate_str.parse::<u16>())
         .transpose()
-        .map_err(|_| VxeError::InvalidPerformanceSetting("Failed to parse polling rate".into()))?;
+        .map_err(|_| MadRError::InvalidPerformanceSetting("Failed to parse polling rate".into()))?;
 
     if let Some(rate) = polling_rate
         && !matches!(rate, 125 | 250 | 500 | 1000 | 2000 | 4000 | 8000)
     {
-        return Err(VxeError::InvalidPerformanceSetting(
+        return Err(MadRError::InvalidPerformanceSetting(
             "Unsupported polling rate".into(),
         ));
     }

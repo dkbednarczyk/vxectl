@@ -3,7 +3,7 @@
 use std::str::FromStr;
 
 use crate::device::Device;
-use crate::{Result, VxeError};
+use crate::{Result, MadRError};
 
 pub struct Rgb {
     r: u8,
@@ -12,25 +12,25 @@ pub struct Rgb {
 }
 
 impl FromStr for Rgb {
-    type Err = VxeError;
+    type Err = MadRError;
 
     fn from_str(s: &str) -> Result<Self> {
         let parts: Vec<&str> = s.split(',').collect();
         if parts.len() != 3 {
-            return Err(VxeError::InvalidRgb(
+            return Err(MadRError::InvalidRgb(
                 "Invalid RGB format. Expected format: R,G,B".into(),
             ));
         }
 
         let r: u8 = parts[0]
             .parse()
-            .map_err(|_| VxeError::InvalidRgb("Invalid R value".into()))?;
+            .map_err(|_| MadRError::InvalidRgb("Invalid R value".into()))?;
         let g: u8 = parts[1]
             .parse()
-            .map_err(|_| VxeError::InvalidRgb("Invalid G value".into()))?;
+            .map_err(|_| MadRError::InvalidRgb("Invalid G value".into()))?;
         let b: u8 = parts[2]
             .parse()
-            .map_err(|_| VxeError::InvalidRgb("Invalid B value".into()))?;
+            .map_err(|_| MadRError::InvalidRgb("Invalid B value".into()))?;
 
         Ok(Rgb { r, g, b })
     }

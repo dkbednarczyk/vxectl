@@ -1,4 +1,4 @@
-use crate::{Result, VxeError};
+use crate::{Result, MadRError};
 use hidapi::{HidApi, HidDevice};
 
 const VXE_VID: u16 = 0x373b;
@@ -28,7 +28,7 @@ impl Device {
             });
         }
 
-        Err(VxeError::DeviceNotFound)
+        Err(MadRError::DeviceNotFound)
     }
 
     pub fn is_wired(&self) -> bool {
