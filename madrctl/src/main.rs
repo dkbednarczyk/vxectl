@@ -4,12 +4,13 @@ use std::thread;
 use std::time::Duration;
 
 use clap::{builder::PossibleValuesParser, value_parser, Parser, Subcommand};
+
 use device::Device;
-use vxelib::*;
+use madr_lib::*;
 
 #[derive(Parser)]
-#[command(name = "vxectl")]
-#[command(about = "Control your VXE gaming mouse from the command line")]
+#[command(name = "madrctl")]
+#[command(about = "Control your VXE MAD R series gaming mouse from the command line")]
 struct Cli {
     #[command(subcommand)]
     command: Commands,
@@ -114,7 +115,9 @@ fn main() -> Result<()> {
             // Send debounce setting if present
             if let Some(debounce_str) = debounce {
                 match debounce_str.as_str() {
-                    "0" | "1" | "2" => eprintln!("warning: low debounce values are not recommended"),
+                    "0" | "1" | "2" => {
+                        eprintln!("warning: low debounce values are not recommended")
+                    }
                     _ => (),
                 }
 

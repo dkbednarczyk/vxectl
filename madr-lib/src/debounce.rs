@@ -1,5 +1,5 @@
-use crate::device::Device;
 use crate::Result;
+use crate::device::Device;
 
 fn get_debounce_packet(debounce_ms: u8) -> Vec<u8> {
     vec![
