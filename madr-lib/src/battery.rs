@@ -25,12 +25,12 @@ fn parse_battery_report(data: &[u8]) -> Result<Battery> {
 }
 
 pub fn get_battery_info(device: &Device) -> Result<Battery> {
-    let mut packet = [0u8; 17];
-    packet[0] = 0x08;
-    packet[1] = 0x04;
-    packet[16] = 0x55 - (0x08 + packet[1]);
+    let mut report = [0u8; 17];
+    report[0] = 0x08;
+    report[1] = 0x04;
+    report[16] = 0x55 - (0x08 + report[1]);
 
-    device.write(&packet)?;
+    device.write(&report)?;
 
     let mut buf = [0u8; 256];
     let size = device.read_timeout(&mut buf, 20)?;

@@ -1,7 +1,7 @@
 # madrlib / madrctl
 
 Inspired by my other project `mxw`. I got a new mouse specifically for gaming, the [VXE MAD R](https://www.atk.store/products/vxe-mad-r-series-wireless-mouse),
-and decided I wanted to make a similar project, but by reverse engineering the mouse myself instead of taking the heavy lifting from someone else. 
+and decided I wanted to make a similar project, but by reverse engineering the mouse myself instead of taking the heavy lifting from someone else. Consider reading the associated [blog post](https://bednarczyk.xyz/blog/reverse-engineering-a-gaming-mouse/).
 
 In theory, this should also work with any other ATK VXE MAD R device.
 
@@ -23,3 +23,6 @@ This project is split into two parts, a library and a generic CLI tool that impl
 - [ ] LOD Silent Height (liftoff distance)
 
 *... and more ...*
+
+## TODO
+- [ ] Add functionality to read current DPI stage and polling rate as to not overwrite then when setting only one of the two

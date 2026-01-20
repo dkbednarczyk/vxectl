@@ -21,8 +21,8 @@ enum Commands {
     /// Set general device parameters
     Set {
         /// DPI stage to enable
-        #[arg(short = 'd', long, value_parser = value_parser!(u8).range(1..=8))]
-        dpi_stage: Option<u8>,
+        // #[arg(short = 'd', long, value_parser = value_parser!(u8).range(1..=8))]
+        // dpi_stage: Option<u8>,
 
         /// Polling rate in Hz
         #[arg(short = 'p', long, value_parser = PossibleValuesParser::new(["125", "250", "500", "1000", "2000", "4000", "8000"]))]
@@ -90,7 +90,7 @@ fn main() -> Result<()> {
 
     match cli.command {
         Commands::Set {
-            dpi_stage,
+            // dpi_stage,
             polling_rate,
             sensor_setting,
             debounce,
@@ -125,9 +125,9 @@ fn main() -> Result<()> {
                 thread::sleep(Duration::from_millis(50));
             }
 
-            // Send combined DPI + polling rate packet
-            performance::apply_settings(&device, dpi_stage, polling_rate.as_deref())?;
-            thread::sleep(Duration::from_millis(50));
+            // // Send combined DPI + polling rate packet
+            // performance::apply_settings(&device, dpi_stage, polling_rate.as_deref())?;
+            // thread::sleep(Duration::from_millis(50));
 
             // Send sleep timeout setting if present
             if let Some(time) = sleep {

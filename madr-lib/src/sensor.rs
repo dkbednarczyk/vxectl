@@ -35,14 +35,14 @@ impl Sensor {
 }
 
 pub fn get_sensor_info(device: &Device) -> Result<Sensor> {
-    let mut packet = [0u8; 17];
-    packet[0] = 0x08;
-    packet[1] = 0x08;
-    packet[4] = 0xB5;
-    packet[5] = 0x06;
-    packet[16] = 0x8a;
+    let mut report = [0u8; 17];
+    report[0] = 0x08;
+    report[1] = 0x08;
+    report[4] = 0xB5;
+    report[5] = 0x06;
+    report[16] = 0x8a;
 
-    device.write(&packet)?;
+    device.write(&report)?;
 
     let mut buf = [0u8; 17];
     device.read_timeout(&mut buf, 20)?;
@@ -50,7 +50,7 @@ pub fn get_sensor_info(device: &Device) -> Result<Sensor> {
     Sensor::from_bytes(&buf).ok_or(MadRError::InvalidSensorFormat)
 }
 
-pub fn get_magic_packet(sensor_setting: u8) -> Vec<u8> {
+pub fn get_magic_report(sensor_setting: u8) -> Vec<u8> {
     vec![
         0x08,
         0x07,
@@ -77,8 +77,8 @@ pub fn apply_setting(device: &Device, setting_str: &str) -> Result<()> {
     let setting = Sensor::setting_from_name(setting_str)
         .ok_or_else(|| MadRError::InvalidSensorSetting(setting_str.into()))?;
 
-    let packet = get_magic_packet(setting);
-    device.send_feature_report(&packet)?;
+    let report = get_magic_report(setting);
+    device.send_feature_report(&report)?;
 
     Ok(())
 }

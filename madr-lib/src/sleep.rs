@@ -3,7 +3,7 @@ use crate::{Result, MadRError};
 use std::thread;
 use std::time::Duration;
 
-pub fn get_sleep_packet(tens_of_seconds: u8) -> Vec<u8> {
+pub fn get_sleep_report(tens_of_seconds: u8) -> Vec<u8> {
     vec![
         0x08,
         0x07,
@@ -25,7 +25,7 @@ pub fn get_sleep_packet(tens_of_seconds: u8) -> Vec<u8> {
     ]
 }
 
-pub fn get_confirmation_packet(tens_of_seconds: u8) -> Vec<u8> {
+pub fn get_confirmation_report(tens_of_seconds: u8) -> Vec<u8> {
     vec![
         0x08,
         0x07,
@@ -61,13 +61,13 @@ pub fn apply_setting(device: &Device, time_str: &str) -> Result<()> {
         _ => return Err(MadRError::InvalidSleepTimeout(time_str.into())),
     };
 
-    let sleep_pkt = get_sleep_packet(tens_of_seconds);
+    let sleep_pkt = get_sleep_report(tens_of_seconds);
     device.send_feature_report(&sleep_pkt)?;
 
-    // Device protocol requires a delay between the two packets
+    // Device protocol requires a delay between the two reports
     thread::sleep(Duration::from_millis(50));
 
-    let confirmation = get_confirmation_packet(tens_of_seconds);
+    let confirmation = get_confirmation_report(tens_of_seconds);
     device.send_feature_report(&confirmation)?;
 
     Ok(())

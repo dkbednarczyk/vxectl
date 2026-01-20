@@ -47,15 +47,15 @@ impl DpiStage {
     }
 }
 
-pub fn read_dpi_stages(device: &Device, packet_index: u8) -> Result<Vec<u8>> {
-    let packet_id = 0x04 + (packet_index * 0x08);
+pub fn read_dpi_stages(device: &Device, report_index: u8) -> Result<Vec<u8>> {
+    let report_id = 0x04 + (report_index * 0x08);
 
     let mut request = vec![0u8; 17];
     request[0] = 0x08;
     request[1] = 0x08;
-    request[4] = packet_id;
+    request[4] = report_id;
     request[5] = 0x08;
-    request[16] = 0x3Du8.wrapping_sub(packet_id);
+    request[16] = 0x3Du8.wrapping_sub(report_id);
 
     device.send_feature_report(&request)?;
 
@@ -65,7 +65,7 @@ pub fn read_dpi_stages(device: &Device, packet_index: u8) -> Result<Vec<u8>> {
     Ok(buf.to_vec())
 }
 
-pub fn decode_dpi_pair(packet: &[u8]) -> (DpiStage, DpiStage) {
+pub fn decode_dpi_pair(report: &[u8]) -> (DpiStage, DpiStage) {
     let decode_dpi = |x_low: u8, y_low: u8, high_container: u8| -> (u16, u16) {
         let x_high = (high_container >> 2) & 0x0F;
         let y_high = (high_container >> 6) & 0x03;
@@ -79,8 +79,8 @@ pub fn decode_dpi_pair(packet: &[u8]) -> (DpiStage, DpiStage) {
         (x_dpi, y_dpi)
     };
 
-    let (x_dpi_a, y_dpi_a) = decode_dpi(packet[6], packet[7], packet[8]);
-    let (x_dpi_b, y_dpi_b) = decode_dpi(packet[10], packet[11], packet[12]);
+    let (x_dpi_a, y_dpi_a) = decode_dpi(report[6], report[7], report[8]);
+    let (x_dpi_b, y_dpi_b) = decode_dpi(report[10], report[11], report[12]);
 
     let stage_a = DpiStage::new(x_dpi_a, y_dpi_a);
     let stage_b = DpiStage::new(x_dpi_b, y_dpi_b);
@@ -88,15 +88,15 @@ pub fn decode_dpi_pair(packet: &[u8]) -> (DpiStage, DpiStage) {
     (stage_a, stage_b)
 }
 
-pub fn read_rgb_stages(device: &Device, packet_index: u8) -> Result<Vec<u8>> {
-    let packet_id = 0x24 + (packet_index * 0x08);
+pub fn read_rgb_stages(device: &Device, report_index: u8) -> Result<Vec<u8>> {
+    let report_id = 0x24 + (report_index * 0x08);
 
     let mut request = vec![0u8; 17];
     request[0] = 0x08;
     request[1] = 0x08;
-    request[4] = packet_id;
+    request[4] = report_id;
     request[5] = 0x08;
-    request[16] = 0x3Du8.wrapping_sub(packet_id);
+    request[16] = 0x3Du8.wrapping_sub(report_id);
 
     device.send_feature_report(&request)?;
 
@@ -118,8 +118,8 @@ pub fn decode_rgb_pair(response: &[u8]) -> (Rgb, Rgb) {
     (decode(6), decode(10))
 }
 
-pub fn encode_dpi_pair(packet_index: u8, stage_a: &DpiStage, stage_b: &DpiStage) -> Vec<u8> {
-    let packet_id = 0x04 + (packet_index * 0x08);
+pub fn encode_dpi_pair(report_index: u8, stage_a: &DpiStage, stage_b: &DpiStage) -> Vec<u8> {
+    let report_id = 0x04 + (report_index * 0x08);
 
     let encode_dpi = |x: u16, y: u16| -> (u8, u8, u8, u8) {
         let x_val = (x / 50).saturating_sub(1);
@@ -149,7 +149,7 @@ pub fn encode_dpi_pair(packet_index: u8, stage_a: &DpiStage, stage_b: &DpiStage)
         0x07,
         0x00,
         0x00,
-        packet_id,
+        report_id,
         0x08,
         x_low_a,
         y_low_a,
@@ -161,12 +161,12 @@ pub fn encode_dpi_pair(packet_index: u8, stage_a: &DpiStage, stage_b: &DpiStage)
         check_b,
         0x00,
         0x00,
-        0x94u8.wrapping_sub(packet_id),
+        0x94u8.wrapping_sub(report_id),
     ]
 }
 
-pub fn encode_rgb_pair(packet_index: u8, rgb_a: &Rgb, rgb_b: &Rgb) -> Vec<u8> {
-    let packet_id = 0x24 + (packet_index * 0x08);
+pub fn encode_rgb_pair(report_index: u8, rgb_a: &Rgb, rgb_b: &Rgb) -> Vec<u8> {
+    let report_id = 0x24 + (report_index * 0x08);
 
     let checksum_a = 0x55u8
         .wrapping_sub(rgb_a.r)
@@ -182,7 +182,7 @@ pub fn encode_rgb_pair(packet_index: u8, rgb_a: &Rgb, rgb_b: &Rgb) -> Vec<u8> {
         0x07,
         0x00,
         0x00,
-        packet_id,
+        report_id,
         0x08,
         rgb_a.r,
         rgb_a.g,
@@ -194,7 +194,7 @@ pub fn encode_rgb_pair(packet_index: u8, rgb_a: &Rgb, rgb_b: &Rgb) -> Vec<u8> {
         checksum_b,
         0x00,
         0x00,
-        0x94u8.wrapping_sub(packet_id),
+        0x94u8.wrapping_sub(report_id),
     ]
 }
 
@@ -205,9 +205,9 @@ pub fn apply_dpi_setting(
     y_dpi: Option<u16>,
     rgb: Option<&str>,
 ) -> Result<()> {
-    let packet_index: u8 = (stage as f32 / 2.0).ceil() as u8;
+    let report_index: u8 = (stage as f32 / 2.0).ceil() as u8;
 
-    let dpi_stages = read_dpi_stages(device, packet_index)?;
+    let dpi_stages = read_dpi_stages(device, report_index)?;
     let (mut stage_a, mut stage_b) = decode_dpi_pair(&dpi_stages);
 
     if stage % 2 == 1 {
@@ -218,13 +218,13 @@ pub fn apply_dpi_setting(
         stage_b.y_dpi = y_dpi.unwrap_or(x_dpi);
     }
 
-    let dpi_packet = encode_dpi_pair(packet_index, &stage_a, &stage_b);
-    device.send_feature_report(&dpi_packet)?;
+    let dpi_report = encode_dpi_pair(report_index, &stage_a, &stage_b);
+    device.send_feature_report(&dpi_report)?;
 
     if let Some(rgb_str) = rgb {
         let parsed = Rgb::from_str(rgb_str)?;
 
-        let rgb_stages = read_rgb_stages(device, packet_index)?;
+        let rgb_stages = read_rgb_stages(device, report_index)?;
         let (mut rgb_a, mut rgb_b) = decode_rgb_pair(&rgb_stages);
 
         if stage % 2 == 1 {
@@ -233,8 +233,8 @@ pub fn apply_dpi_setting(
             rgb_b = parsed;
         }
 
-        let rgb_packet = encode_rgb_pair(packet_index, &rgb_a, &rgb_b);
-        device.send_feature_report(&rgb_packet)?;
+        let rgb_report = encode_rgb_pair(report_index, &rgb_a, &rgb_b);
+        device.send_feature_report(&rgb_report)?;
     };
 
     Ok(())

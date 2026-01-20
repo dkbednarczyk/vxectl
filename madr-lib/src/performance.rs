@@ -1,37 +1,11 @@
 // Performance settings module
-// DPI stage and polling rate share the same packet structure (0x08 0x07 0x00 0x00 0x00 0x06)
-// and can be combined into a single configuration packet.
+// DPI stage and polling rate share the same report structure (0x08 0x07 0x00 0x00 0x00 0x06)
+// and can be combined into a single configuration report.
 
 use crate::device::Device;
 use crate::{Result, MadRError};
 
-/// Get packet for setting DPI stage only
-pub fn get_dpi_packet(dpi_stage: u8) -> Vec<u8> {
-    vec![
-        0x08,
-        0x07,
-        0x00,
-        0x00,
-        0x00,
-        0x06,
-        // magic bits
-        0x01,
-        0x54,
-        0x04,
-        0x51,
-        // set DPI stage index
-        dpi_stage - 1,
-        0x55u8.wrapping_sub(dpi_stage - 1),
-        0x00,
-        0x00,
-        0x00,
-        0x00,
-        0x41,
-    ]
-}
-
-/// Get packet for setting polling rate only
-pub fn get_polling_rate_packet(rate: u16) -> Vec<u8> {
+pub fn get_combined_report(dpi_stage: u8, rate: u16) -> Result<Vec<u8>> {
     let rate_byte: u8 = match rate {
         125 => 0x08,
         250 => 0x04,
@@ -41,47 +15,12 @@ pub fn get_polling_rate_packet(rate: u16) -> Vec<u8> {
         2000 => 0x10,
         4000 => 0x20,
         8000 => 0x40,
-        _ => unreachable!(),
+        _ => return Err(MadRError::InvalidPerformanceSetting(
+            "Unsupported polling rate".into(),
+        ))?,
     };
 
-    vec![
-        0x08,
-        0x07,
-        0x00,
-        0x00,
-        0x00,
-        0x06,
-        // set polling rate byte
-        rate_byte,
-        0x55u8.wrapping_sub(rate_byte),
-        // magic bits
-        0x04,
-        0x51,
-        0x01,
-        0x54,
-        0x00,
-        0x00,
-        0x00,
-        0x00,
-        0x41,
-    ]
-}
-
-// Get combined packet for setting both DPI stage and polling rate
-// This is more reliable than sending two separate packets as they share the same command structure
-pub fn get_combined_packet(dpi_stage: u8, rate: u16) -> Vec<u8> {
-    let rate_byte: u8 = match rate {
-        125 => 0x08,
-        250 => 0x04,
-        500 => 0x02,
-        1000 => 0x01,
-        2000 => 0x10,
-        4000 => 0x20,
-        8000 => 0x40,
-        _ => unreachable!(),
-    };
-
-    vec![
+    Ok(vec![
         0x08,
         0x07,
         0x00,
@@ -99,41 +38,17 @@ pub fn get_combined_packet(dpi_stage: u8, rate: u16) -> Vec<u8> {
         0x00,
         0x00,
         0x41, // bytes 12-16: trailer
-    ]
-}
-
-// Build the appropriate packet based on which settings are provided
-pub fn build_packet(dpi_stage: Option<u8>, polling_rate: Option<u16>) -> Option<Vec<u8>> {
-    match (dpi_stage, polling_rate) {
-        (Some(stage), Some(rate)) => Some(get_combined_packet(stage, rate)),
-        (Some(stage), None) => Some(get_dpi_packet(stage)),
-        (None, Some(rate)) => Some(get_polling_rate_packet(rate)),
-        (None, None) => None,
-    }
+    ])
 }
 
 /// Apply performance settings to device
 pub fn apply_settings(
     device: &Device,
-    dpi_stage: Option<u8>,
-    polling_rate_str: Option<&str>,
+    dpi_stage: u8,
+    polling_rate: u16,
 ) -> Result<()> {
-    let polling_rate = polling_rate_str
-        .map(|rate_str| rate_str.parse::<u16>())
-        .transpose()
-        .map_err(|_| MadRError::InvalidPerformanceSetting("Failed to parse polling rate".into()))?;
-
-    if let Some(rate) = polling_rate
-        && !matches!(rate, 125 | 250 | 500 | 1000 | 2000 | 4000 | 8000)
-    {
-        return Err(MadRError::InvalidPerformanceSetting(
-            "Unsupported polling rate".into(),
-        ));
-    }
-
-    if let Some(packet) = build_packet(dpi_stage, polling_rate) {
-        device.send_feature_report(&packet)?;
-    }
+    let report = get_combined_report(dpi_stage, polling_rate)?;
+    device.send_feature_report(&report)?;
 
     Ok(())
 }
