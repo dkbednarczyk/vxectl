@@ -1,10 +1,18 @@
+use std::time::Duration;
+
 use anyhow::anyhow;
 use anyhow::Result;
+use colored::Colorize;
 
 use clap::{builder::PossibleValuesParser, value_parser, Parser, Subcommand};
 
+use madr_lib::battery::Battery;
+use madr_lib::debounce::Debounce;
+use madr_lib::performance::PollingRate;
+use madr_lib::sensor::Sensor;
+use madr_lib::sensor::SensorMode;
 use madr_lib::{
-    battery, debounce,
+    debounce,
     device::Device,
     dpi,
     performance::{self, Performance},
@@ -52,7 +60,7 @@ enum Set {
     DpiStage {
         /// DPI stage to set active (1-8)
         #[arg(value_parser = value_parser!(u8).range(1..=8))]
-        stage: u8
+        stage: u8,
     },
     /// Set polling rate
     PollingRate {
@@ -102,20 +110,35 @@ fn main() -> Result<()> {
     match cli.command {
         Commands::Set(cmd) => match cmd {
             Set::Debounce { time } => {
-                match time.as_str() {
-                    "0" | "1" | "2" => {
-                        eprintln!("warning: low debounce values are not recommended")
-                    }
-                    _ => (),
+                let time_val: u8 = time.parse()?;
+
+                if let 0..=2 = time_val {
+                    println!("warning: low debounce values are not recommended")
                 }
-                debounce::apply_setting(&device, &time)?;
+
+                debounce::apply_setting(&device, Debounce::try_from(time_val)?)?;
             }
             Set::Sleep { timeout } => {
-                sleep::apply_setting(&device, &timeout)?;
+                let duration = match timeout.as_str() {
+                    "30s" => Duration::from_secs(30),
+                    "1m" => Duration::from_secs(60),
+                    "2m" => Duration::from_secs(120),
+                    "3m" => Duration::from_secs(180),
+                    "5m" => Duration::from_secs(300),
+                    "20m" => Duration::from_secs(1200),
+                    "25m" => Duration::from_secs(1500),
+                    "30m" => Duration::from_secs(1800),
+                    _ => return Err(anyhow!("invalid timeout value: {}", timeout)),
+                };
+
+                sleep::apply_setting(&device, duration)?;
             }
             Set::DpiStage { stage } => {
-                let settings = performance::get_settings(&device)?;
-                performance::apply_settings(&device, &Performance::new(stage, settings.polling_rate()))?;
+                let settings = Performance::read(&device)?;
+                performance::apply_settings(
+                    &device,
+                    &Performance::new(stage, settings.polling_rate()),
+                )?;
             }
             Set::PollingRate { rate } => {
                 let r: u16 = rate.parse().unwrap();
@@ -127,11 +150,16 @@ fn main() -> Result<()> {
                     ));
                 }
 
-                let settings = performance::get_settings(&device)?;
-                performance::apply_settings(&device, &Performance::new(settings.dpi_stage(), r))?;
+                let new_rate = PollingRate::try_from(r)?;
+                let settings = Performance::read(&device)?;
+                performance::apply_settings(
+                    &device,
+                    &Performance::new(settings.dpi_stage(), new_rate),
+                )?;
             }
             Set::Sensor { preset } => {
-                sensor::apply_setting(&device, &preset)?;
+                let preset: SensorMode = preset.parse()?;
+                sensor::apply_setting(&device, preset)?;
             }
         },
         Commands::Dpi(cmd) => match cmd {
@@ -146,12 +174,41 @@ fn main() -> Result<()> {
         },
         Commands::Info(cmd) => match cmd {
             Info::Battery => {
-                let b = battery::get_battery_info(&device)?;
-                println!("{:?}", b);
+                let b = Battery::read(&device)?;
+
+                let colored_percentage = match b.percentage() {
+                    0..=20 => format!("{}", b.percentage()).red(),
+                    21..=50 => format!("{}", b.percentage()).yellow(),
+                    _ => format!("{}", b.percentage()).green(),
+                };
+
+                println!(
+                    "{colored_percentage}% | {:.2}V | {}",
+                    (b.voltage() as f32 / 1000.0),
+                    if b.is_charging() {
+                        "Charging".green()
+                    } else {
+                        "Not Charging".cyan()
+                    }
+                );
+
+                if device.is_wired() && !b.is_charging() {
+                    println!(
+                        "{}: mouse is plugged in, but battery is not charging",
+                        "warning".yellow()
+                    );
+                }
             }
             Info::Sensor => {
-                let s = sensor::get_sensor_info(&device)?;
-                println!("{:?}", s);
+                let s = Sensor::read(&device)?;
+
+                let colored_preset = match s.mode() {
+                    SensorMode::Basic => "basic".green(),
+                    SensorMode::Competitive => "competitive".cyan(),
+                    SensorMode::Max => "max".red(),
+                };
+
+                println!("Sensor is set to {} mode", colored_preset);
             }
         },
     }

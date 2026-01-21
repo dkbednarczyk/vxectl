@@ -181,9 +181,7 @@ dependencies = [
  "anyhow",
  "clap",
  "colored",
- "hidapi",
  "madr-lib",
- "thiserror",
 ]
 
 [[package]]

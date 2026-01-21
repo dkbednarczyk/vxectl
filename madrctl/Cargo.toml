@@ -8,6 +8,4 @@ description = "Control your VXE MAD R series gaming mouse from the command line"
 anyhow = "1.0"
 clap = { version = "4.5", features = ["derive"] }
 colored = "3.1"
-hidapi = "2.6"
-thiserror = "2.0"
 madr-lib = { path = "../madr-lib", version = "0.1.0" }

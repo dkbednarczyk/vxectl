@@ -5,13 +5,45 @@
 use crate::device::Device;
 use crate::{MadRError, Result};
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub enum PollingRate {
+    Hz125 = 125,
+    Hz250 = 250,
+    Hz500 = 500,
+    Hz1000 = 1000,
+    Hz2000 = 2000,
+    Hz4000 = 4000,
+    Hz8000 = 8000,
+}
+
+impl TryFrom<u16> for PollingRate {
+    type Error = MadRError;
+
+    fn try_from(value: u16) -> Result<Self> {
+        match value {
+            125 => Ok(PollingRate::Hz125),
+            250 => Ok(PollingRate::Hz250),
+            500 => Ok(PollingRate::Hz500),
+            1000 => Ok(PollingRate::Hz1000),
+            2000 => Ok(PollingRate::Hz2000),
+            4000 => Ok(PollingRate::Hz4000),
+            8000 => Ok(PollingRate::Hz8000),
+            _ => Err(MadRError::InvalidPerformanceSetting(format!(
+                "Unsupported polling rate: {}",
+                value
+            ))),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Performance {
     dpi_stage: u8,
-    polling_rate: u16,
+    polling_rate: PollingRate,
 }
 
 impl Performance {
-    pub fn new(dpi_stage: u8, polling_rate: u16) -> Self {
+    pub fn new(dpi_stage: u8, polling_rate: PollingRate) -> Self {
         Self {
             dpi_stage,
             polling_rate,
@@ -22,21 +54,35 @@ impl Performance {
         self.dpi_stage
     }
 
-    pub fn polling_rate(&self) -> u16 {
+    pub fn polling_rate(&self) -> PollingRate {
         self.polling_rate
     }
 
+    pub fn read(device: &Device) -> Result<Self> {
+        let mut report = [0u8; 17];
+        report[0] = 0x08;
+        report[1] = 0x08;
+        report[5] = 0x06;
+        report[16] = 0x3f;
+
+        device.write(&report)?;
+
+        let mut buf = [0u8; 17];
+        device.read_timeout(&mut buf, 20)?;
+
+        Self::from_bytes(&buf)
+    }
+
     fn from_bytes(data: &[u8]) -> Result<Performance> {
-        println!("Parsing performance data: {:x?}", data);
         let dpi_stage = data[10] + 1; // stored as stage - 1
         let polling_rate = match data[6] {
-            0x08 => 125,
-            0x04 => 250,
-            0x02 => 500,
-            0x01 => 1000,
-            0x10 => 2000,
-            0x20 => 4000,
-            0x40 => 8000,
+            0x08 => PollingRate::Hz125,
+            0x04 => PollingRate::Hz250,
+            0x02 => PollingRate::Hz500,
+            0x01 => PollingRate::Hz1000,
+            0x10 => PollingRate::Hz2000,
+            0x20 => PollingRate::Hz4000,
+            0x40 => PollingRate::Hz8000,
             _ => {
                 return Err(MadRError::InvalidPerformanceSetting(
                     "Unsupported polling rate".into(),
@@ -51,21 +97,15 @@ impl Performance {
     }
 }
 
-fn make_combined_report(dpi_stage: u8, rate: u16) -> Result<Vec<u8>> {
+fn make_combined_report(dpi_stage: u8, rate: PollingRate) -> Result<Vec<u8>> {
     let rate_byte: u8 = match rate {
-        125 => 0x08,
-        250 => 0x04,
-        500 => 0x02,
-        1000 => 0x01,
-        // wireless only
-        2000 => 0x10,
-        4000 => 0x20,
-        8000 => 0x40,
-        _ => {
-            return Err(MadRError::InvalidPerformanceSetting(
-                "Unsupported polling rate".into(),
-            ))?;
-        }
+        PollingRate::Hz125 => 0x08,
+        PollingRate::Hz250 => 0x04,
+        PollingRate::Hz500 => 0x02,
+        PollingRate::Hz1000 => 0x01,
+        PollingRate::Hz2000 => 0x10,
+        PollingRate::Hz4000 => 0x20,
+        PollingRate::Hz8000 => 0x40,
     };
 
     Ok(vec![
@@ -87,23 +127,6 @@ fn make_combined_report(dpi_stage: u8, rate: u16) -> Result<Vec<u8>> {
         0x00,
         0x41, // bytes 12-16: trailer
     ])
-}
-
-pub fn get_settings(device: &Device) -> Result<Performance> {
-    let mut report = [0u8; 17];
-    report[0] = 0x08;
-    report[1] = 0x08;
-    report[5] = 0x06;
-    report[16] = 0x3f;
-
-    device.write(&report)?;
-
-    let mut buf = [0u8; 17];
-    device.read_timeout(&mut buf, 20)?;
-
-    println!("Performance report data: {:x?}", &buf);
-
-    Performance::from_bytes(&buf)
 }
 
 /// Apply performance settings to device

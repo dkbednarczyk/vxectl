@@ -31,6 +31,8 @@ pub enum MadRError {
     InvalidRgb(String),
     #[error("Invalid performance setting: {0}")]
     InvalidPerformanceSetting(String),
+    #[error("Invalid debounce setting: {0}")]
+    InvalidDebounceSetting(String),
 }
 
 pub type Result<T> = std::result::Result<T, MadRError>;

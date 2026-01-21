@@ -5,10 +5,17 @@ use std::str::FromStr;
 use crate::device::Device;
 use crate::{MadRError, Result};
 
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Rgb {
     r: u8,
     g: u8,
     b: u8,
+}
+
+impl Rgb {
+    pub fn new(r: u8, g: u8, b: u8) -> Self {
+        Self { r, g, b }
+    }
 }
 
 impl FromStr for Rgb {
@@ -36,18 +43,19 @@ impl FromStr for Rgb {
     }
 }
 
-pub struct DpiStage {
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct DpiStage {
     x_dpi: u16,
     y_dpi: u16,
 }
 
 impl DpiStage {
-    pub fn new(x_dpi: u16, y_dpi: u16) -> Self {
+    fn new(x_dpi: u16, y_dpi: u16) -> Self {
         Self { x_dpi, y_dpi }
     }
 }
 
-pub fn read_dpi_stages(device: &Device, report_index: u8) -> Result<Vec<u8>> {
+fn read_dpi_stages(device: &Device, report_index: u8) -> Result<Vec<u8>> {
     let report_id = 0x04 + (report_index * 0x08);
 
     let mut request = vec![0u8; 17];
@@ -65,7 +73,7 @@ pub fn read_dpi_stages(device: &Device, report_index: u8) -> Result<Vec<u8>> {
     Ok(buf.to_vec())
 }
 
-pub fn decode_dpi_pair(report: &[u8]) -> (DpiStage, DpiStage) {
+fn decode_dpi_pair(report: &[u8]) -> (DpiStage, DpiStage) {
     let decode_dpi = |x_low: u8, y_low: u8, high_container: u8| -> (u16, u16) {
         let x_high = (high_container >> 2) & 0x0F;
         let y_high = (high_container >> 6) & 0x03;
@@ -88,7 +96,7 @@ pub fn decode_dpi_pair(report: &[u8]) -> (DpiStage, DpiStage) {
     (stage_a, stage_b)
 }
 
-pub fn read_rgb_stages(device: &Device, report_index: u8) -> Result<Vec<u8>> {
+fn read_rgb_stages(device: &Device, report_index: u8) -> Result<Vec<u8>> {
     let report_id = 0x24 + (report_index * 0x08);
 
     let mut request = vec![0u8; 17];
@@ -106,7 +114,7 @@ pub fn read_rgb_stages(device: &Device, report_index: u8) -> Result<Vec<u8>> {
     Ok(buf.to_vec())
 }
 
-pub fn decode_rgb_pair(response: &[u8]) -> (Rgb, Rgb) {
+fn decode_rgb_pair(response: &[u8]) -> (Rgb, Rgb) {
     let decode = |offset: usize| -> Rgb {
         Rgb {
             r: response[offset],
@@ -118,7 +126,7 @@ pub fn decode_rgb_pair(response: &[u8]) -> (Rgb, Rgb) {
     (decode(6), decode(10))
 }
 
-pub fn encode_dpi_pair(report_index: u8, stage_a: &DpiStage, stage_b: &DpiStage) -> Vec<u8> {
+fn encode_dpi_pair(report_index: u8, stage_a: &DpiStage, stage_b: &DpiStage) -> Vec<u8> {
     let report_id = 0x04 + (report_index * 0x08);
 
     let encode_dpi = |x: u16, y: u16| -> (u8, u8, u8, u8) {
@@ -165,7 +173,7 @@ pub fn encode_dpi_pair(report_index: u8, stage_a: &DpiStage, stage_b: &DpiStage)
     ]
 }
 
-pub fn encode_rgb_pair(report_index: u8, rgb_a: &Rgb, rgb_b: &Rgb) -> Vec<u8> {
+fn encode_rgb_pair(report_index: u8, rgb_a: &Rgb, rgb_b: &Rgb) -> Vec<u8> {
     let report_id = 0x24 + (report_index * 0x08);
 
     let checksum_a = 0x55u8
@@ -214,18 +222,18 @@ pub fn apply_dpi_setting(
     let report_index: u8 = (stage as f32 / 2.0).ceil() as u8;
 
     if let Some(x_dpi_val) = x_dpi {
-        if x_dpi_val % 50 != 0 || x_dpi_val < 100 || x_dpi_val > 30000 {
+        if x_dpi_val % 50 != 0 || !(100..=30000).contains(&x_dpi_val) {
             return Err(MadRError::InvalidDpi(
                 "X DPI must be between 100 and 30000 and a multiple of 50".into(),
             ));
         }
 
-        if let Some(y_dpi_val) = y_dpi {
-            if y_dpi_val % 50 != 0 || y_dpi_val < 100 || y_dpi_val > 30000 {
-                return Err(MadRError::InvalidDpi(
-                    "Y DPI must be between 100 and 30000 and a multiple of 50".into(),
-                ));
-            }
+        if let Some(y_dpi_val) = y_dpi
+            && (y_dpi_val % 50 != 0 || !(100..=30000).contains(&y_dpi_val))
+        {
+            return Err(MadRError::InvalidDpi(
+                "Y DPI must be between 100 and 30000 and a multiple of 50".into(),
+            ));
         }
 
         let dpi_stages = read_dpi_stages(device, report_index)?;
@@ -241,7 +249,7 @@ pub fn apply_dpi_setting(
 
         let dpi_report = encode_dpi_pair(report_index, &stage_a, &stage_b);
         device.send_feature_report(&dpi_report)?;
-    }
+    };
 
     if let Some(rgb_str) = rgb {
         let parsed = Rgb::from_str(rgb_str)?;

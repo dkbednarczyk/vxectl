@@ -1,9 +1,8 @@
+use crate::Result;
 use crate::device::Device;
-use crate::{MadRError, Result};
-use std::thread;
 use std::time::Duration;
 
-pub fn get_sleep_report(tens_of_seconds: u8) -> Vec<u8> {
+fn get_sleep_report(tens_of_seconds: u8) -> Vec<u8> {
     vec![
         0x08,
         0x07,
@@ -25,7 +24,7 @@ pub fn get_sleep_report(tens_of_seconds: u8) -> Vec<u8> {
     ]
 }
 
-pub fn get_confirmation_report(tens_of_seconds: u8) -> Vec<u8> {
+fn get_confirmation_report(tens_of_seconds: u8) -> Vec<u8> {
     vec![
         0x08,
         0x07,
@@ -48,24 +47,12 @@ pub fn get_confirmation_report(tens_of_seconds: u8) -> Vec<u8> {
 }
 
 /// Apply sleep timeout setting to device
-pub fn apply_setting(device: &Device, time_str: &str) -> Result<()> {
-    let tens_of_seconds: u8 = match time_str {
-        "30s" => 3,
-        "1m" => 6,
-        "2m" => 12,
-        "3m" => 18,
-        "5m" => 30,
-        "20m" => 120,
-        "25m" => 150,
-        "30m" => 180,
-        _ => return Err(MadRError::InvalidSleepTimeout(time_str.into())),
-    };
+pub fn apply_setting(device: &Device, duration: Duration) -> Result<()> {
+    let time_ms = duration.as_millis() as u32;
+    let tens_of_seconds = (time_ms / 10000) as u8;
 
     let sleep_pkt = get_sleep_report(tens_of_seconds);
     device.send_feature_report(&sleep_pkt)?;
-
-    // Device protocol requires a delay between the two reports
-    thread::sleep(Duration::from_millis(50));
 
     let confirmation = get_confirmation_report(tens_of_seconds);
     device.send_feature_report(&confirmation)?;
