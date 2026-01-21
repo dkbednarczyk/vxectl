@@ -21,29 +21,51 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Commands {
-    /// Change debounce settings
+    /// Configure device settings
     #[clap(subcommand)]
-    Debounce(Debounce),
-
-    /// Change sleep timeout settings
-    #[clap(subcommand)]
-    Sleep(Sleep),
+    Set(Set),
 
     /// Change dpi settings
     #[clap(subcommand)]
     Dpi(Dpi),
 
-    /// Change polling rate settings
-    #[clap(subcommand)]
-    Polling(Polling),
-
-    /// Change sensor settings
-    #[clap(subcommand)]
-    Sensor(Sensor),
-
     /// Get device info
     #[clap(subcommand)]
     Info(Info),
+}
+
+#[derive(Subcommand)]
+enum Set {
+    /// Set debounce time
+    Debounce {
+        /// Debounce time in milliseconds
+        #[arg(value_parser = PossibleValuesParser::new(["0", "1", "2", "4", "8", "15", "20"]))]
+        time: String,
+    },
+    /// Set sleep timeout
+    Sleep {
+        /// Sleep timeout (inactivity before sleep)
+        #[arg(value_parser = PossibleValuesParser::new(["30s", "1m", "2m", "3m", "5m", "20m", "25m", "30m"]))]
+        timeout: String,
+    },
+    /// Set active DPI stage
+    DpiStage {
+        /// DPI stage to set active (1-8)
+        #[arg(value_parser = value_parser!(u8).range(1..=8))]
+        stage: u8
+    },
+    /// Set polling rate
+    PollingRate {
+        /// Polling rate in Hz
+        #[arg(value_parser = PossibleValuesParser::new(["125", "250", "500", "1000", "2000", "4000", "8000"]))]
+        rate: String,
+    },
+    /// Set sensor preset
+    Sensor {
+        /// Preset to apply
+        #[arg(value_parser = PossibleValuesParser::new(["basic", "competitive", "max"]))]
+        preset: String,
+    },
 }
 
 #[derive(Subcommand)]
@@ -55,34 +77,7 @@ enum Info {
 }
 
 #[derive(Subcommand)]
-enum Debounce {
-    /// Set debounce time
-    Set {
-        /// Debounce time in milliseconds
-        #[arg(value_parser = PossibleValuesParser::new(["0", "1", "2", "4", "8", "15", "20"]))]
-        time: String,
-    },
-}
-
-#[derive(Subcommand)]
-enum Sleep {
-    /// Set sleep timeout
-    Set {
-        /// Sleep timeout (inactivity before sleep)
-        #[arg(value_parser = PossibleValuesParser::new(["30s", "1m", "2m", "3m", "5m", "20m", "25m", "30m"]))]
-        timeout: String,
-    },
-}
-
-
-#[derive(Subcommand)]
 enum Dpi {
-    SetStage {
-        /// DPI stage to set active (1-8)
-        #[arg(value_parser = value_parser!(u8).range(1..=8))]
-        stage: u8
-    },
-
     /// Change DPI settings for a specific stage
     ModifyStage {
         /// DPI stage to change (1-8)
@@ -100,33 +95,13 @@ enum Dpi {
     },
 }
 
-#[derive(Subcommand)]
-enum Polling {
-    /// Set polling rate
-    Set {
-        /// Polling rate in Hz
-        #[arg(value_parser = PossibleValuesParser::new(["125", "250", "500", "1000", "2000", "4000", "8000"]))]
-        polling_rate: String,
-    },
-}
-
-#[derive(Subcommand)]
-enum Sensor {
-    /// Set sensor preset
-    Set {
-        /// Preset to apply
-        #[arg(value_parser = PossibleValuesParser::new(["basic", "competitive", "max"]))]
-        preset: String,
-    },
-}
-
 fn main() -> Result<()> {
     let cli = Cli::parse();
     let device = Device::open()?;
 
     match cli.command {
-        Commands::Debounce(cmd) => match cmd {
-            Debounce::Set { time } => {
+        Commands::Set(cmd) => match cmd {
+            Set::Debounce { time } => {
                 match time.as_str() {
                     "0" | "1" | "2" => {
                         eprintln!("warning: low debounce values are not recommended")
@@ -135,10 +110,38 @@ fn main() -> Result<()> {
                 }
                 debounce::apply_setting(&device, &time)?;
             }
-        },
-        Commands::Sleep(cmd) => match cmd {
-            Sleep::Set { timeout } => {
+            Set::Sleep { timeout } => {
                 sleep::apply_setting(&device, &timeout)?;
+            }
+            Set::DpiStage { stage } => {
+                let settings = performance::get_settings(&device)?;
+                performance::apply_settings(&device, &Performance::new(stage, settings.polling_rate()))?;
+            }
+            Set::PollingRate { rate } => {
+                let r: u16 = rate.parse().unwrap();
+
+                // Validate polling rate for wired devices
+                if device.is_wired() && r > 1000 {
+                    return Err(anyhow!(
+                        "Wired mouse only supports up to 1000 Hz polling rate."
+                    ));
+                }
+
+                let settings = performance::get_settings(&device)?;
+                performance::apply_settings(&device, &Performance::new(settings.dpi_stage(), r))?;
+            }
+            Set::Sensor { preset } => {
+                sensor::apply_setting(&device, &preset)?;
+            }
+        },
+        Commands::Dpi(cmd) => match cmd {
+            Dpi::ModifyStage {
+                stage,
+                x_dpi,
+                y_dpi,
+                rgb,
+            } => {
+                dpi::apply_dpi_setting(&device, stage, x_dpi, y_dpi, rgb.as_deref())?;
             }
         },
         Commands::Info(cmd) => match cmd {
@@ -149,40 +152,6 @@ fn main() -> Result<()> {
             Info::Sensor => {
                 let s = sensor::get_sensor_info(&device)?;
                 println!("{:?}", s);
-            }
-        },
-        Commands::Dpi(cmd) => match cmd {
-            Dpi::SetStage { stage } => {
-                let settings = performance::get_settings(&device)?;
-                performance::apply_settings(&device, &Performance::new(stage, settings.polling_rate()))?;
-            }
-            Dpi::ModifyStage {
-                stage,
-                x_dpi,
-                y_dpi,
-                rgb,
-            } => {
-                dpi::apply_dpi_setting(&device, stage, x_dpi, y_dpi, rgb.as_deref())?;
-            }
-        },
-        Commands::Polling(cmd) => match cmd {
-            Polling::Set { polling_rate } => {
-                let rate: u16 = polling_rate.parse().unwrap();
-
-                // Validate polling rate for wired devices
-                if device.is_wired() && rate > 1000 {
-                    return Err(anyhow!(
-                        "Wired mouse only supports up to 1000 Hz polling rate."
-                    ));
-                }
-
-                let settings = performance::get_settings(&device)?;
-                performance::apply_settings(&device, &Performance::new(settings.dpi_stage(), rate))?;
-            }
-        },
-        Commands::Sensor(cmd) => match cmd {
-            Sensor::Set { preset } => {
-                sensor::apply_setting(&device, &preset)?;
             }
         },
     }
