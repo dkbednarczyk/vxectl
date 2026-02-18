@@ -88,8 +88,8 @@ fn get_magic_report(sensor_mode: SensorMode) -> Vec<u8> {
         0x07,
         0x00,
         0x00,
-        0xb5,                         // magic
-        0x06,                         // bytes
+        0xb5,    // magic...
+        0x06,    // ...bytes
         0x00,    // works with either 00 or 01? after factory reset 00 is correct though
         0x55,    // 55 - prev
         0x06,    // magic

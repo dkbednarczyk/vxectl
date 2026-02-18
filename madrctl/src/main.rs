@@ -135,6 +135,7 @@ fn main() -> Result<()> {
             }
             Set::DpiStage { stage } => {
                 let settings = Performance::read(&device)?;
+
                 performance::apply_settings(
                     &device,
                     &Performance::new(stage, settings.polling_rate()),
@@ -159,6 +160,7 @@ fn main() -> Result<()> {
             }
             Set::Sensor { preset } => {
                 let preset: SensorMode = preset.parse()?;
+                
                 sensor::apply_setting(&device, preset)?;
             }
         },

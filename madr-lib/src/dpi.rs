@@ -32,9 +32,11 @@ impl FromStr for Rgb {
         let r: u8 = parts[0]
             .parse()
             .map_err(|_| MadRError::InvalidRgb("Invalid R value".into()))?;
+
         let g: u8 = parts[1]
             .parse()
             .map_err(|_| MadRError::InvalidRgb("Invalid G value".into()))?;
+        
         let b: u8 = parts[2]
             .parse()
             .map_err(|_| MadRError::InvalidRgb("Invalid B value".into()))?;
@@ -180,6 +182,7 @@ fn encode_rgb_pair(report_index: u8, rgb_a: &Rgb, rgb_b: &Rgb) -> Vec<u8> {
         .wrapping_sub(rgb_a.r)
         .wrapping_sub(rgb_a.g)
         .wrapping_sub(rgb_a.b);
+
     let checksum_b = 0x55u8
         .wrapping_sub(rgb_b.r)
         .wrapping_sub(rgb_b.g)
@@ -222,15 +225,15 @@ pub fn apply_dpi_setting(
     let report_index: u8 = (stage as f32 / 2.0).ceil() as u8;
 
     if let Some(x_dpi_val) = x_dpi {
-        if x_dpi_val % 50 != 0 || !(100..=30000).contains(&x_dpi_val) {
+        let is_in_range = |x| x % 50 == 0 && (100..=30000).contains(&x);
+
+        if !is_in_range(x_dpi_val) {
             return Err(MadRError::InvalidDpi(
                 "X DPI must be between 100 and 30000 and a multiple of 50".into(),
             ));
         }
 
-        if let Some(y_dpi_val) = y_dpi
-            && (y_dpi_val % 50 != 0 || !(100..=30000).contains(&y_dpi_val))
-        {
+        if let Some(y_dpi_val) = y_dpi && !is_in_range(y_dpi_val) {
             return Err(MadRError::InvalidDpi(
                 "Y DPI must be between 100 and 30000 and a multiple of 50".into(),
             ));

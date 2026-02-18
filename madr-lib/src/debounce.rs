@@ -1,5 +1,4 @@
-use crate::Result;
-use crate::device::Device;
+use crate::{Result, device::Device, MadRError};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum Debounce {
@@ -14,7 +13,7 @@ pub enum Debounce {
 }
 
 impl TryFrom<u8> for Debounce {
-    type Error = crate::MadRError;
+    type Error = MadRError;
 
     fn try_from(value: u8) -> Result<Self> {
         match value {
@@ -25,7 +24,7 @@ impl TryFrom<u8> for Debounce {
             8 => Ok(Debounce::Ms8),
             15 => Ok(Debounce::Ms15),
             20 => Ok(Debounce::Ms20),
-            _ => Err(crate::MadRError::InvalidDebounceSetting(format!(
+            _ => Err(MadRError::InvalidDebounceSetting(format!(
                 "Invalid debounce value: {}. Must be one of: 0, 1, 2, 4, 8, 15, 20",
                 value
             ))),
