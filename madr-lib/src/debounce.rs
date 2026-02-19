@@ -1,4 +1,4 @@
-use crate::{Result, device::Device, MadRError};
+use crate::{MadRError, Result, device::Device};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum Debounce {
@@ -24,7 +24,7 @@ impl TryFrom<u8> for Debounce {
             8 => Ok(Debounce::Ms8),
             15 => Ok(Debounce::Ms15),
             20 => Ok(Debounce::Ms20),
-            _ => Err(MadRError::InvalidDebounceSetting(format!(
+            _ => Err(MadRError::InvalidDebounceValue(format!(
                 "Invalid debounce value: {}. Must be one of: 0, 1, 2, 4, 8, 15, 20",
                 value
             ))),

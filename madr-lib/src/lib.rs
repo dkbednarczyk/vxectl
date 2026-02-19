@@ -6,6 +6,12 @@ pub mod performance;
 pub mod sensor;
 pub mod sleep;
 
+pub use battery::Battery;
+pub use debounce::Debounce;
+pub use device::Device;
+pub use performance::{Performance, PollingRate};
+pub use sensor::Sensor;
+
 use thiserror::Error;
 
 /// Unified error type for all vxelib operations
@@ -24,15 +30,13 @@ pub enum MadRError {
     #[error("Invalid sleep timeout: {0}")]
     InvalidSleepTimeout(String),
     #[error("Invalid debounce value: {0}")]
-    InvalidDebounce(#[from] std::num::ParseIntError),
+    InvalidDebounceValue(String),
     #[error("Invalid DPI setting: {0}")]
-    InvalidDpi(String),
+    InvalidDpiSetting(String),
     #[error("Invalid RGB value: {0}")]
-    InvalidRgb(String),
+    InvalidRgbValue(String),
     #[error("Invalid performance setting: {0}")]
     InvalidPerformanceSetting(String),
-    #[error("Invalid debounce setting: {0}")]
-    InvalidDebounceSetting(String),
 }
 
 pub type Result<T> = std::result::Result<T, MadRError>;

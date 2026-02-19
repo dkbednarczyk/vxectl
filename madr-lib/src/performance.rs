@@ -97,7 +97,7 @@ impl Performance {
     }
 }
 
-fn make_combined_report(dpi_stage: u8, rate: PollingRate) -> Result<Vec<u8>> {
+fn make_combined_report(dpi_stage: u8, rate: PollingRate) -> Vec<u8> {
     let rate_byte: u8 = match rate {
         PollingRate::Hz125 => 0x08,
         PollingRate::Hz250 => 0x04,
@@ -108,7 +108,7 @@ fn make_combined_report(dpi_stage: u8, rate: PollingRate) -> Result<Vec<u8>> {
         PollingRate::Hz8000 => 0x40,
     };
 
-    Ok(vec![
+    vec![
         0x08,
         0x07,
         0x00,
@@ -126,12 +126,12 @@ fn make_combined_report(dpi_stage: u8, rate: PollingRate) -> Result<Vec<u8>> {
         0x00,
         0x00,
         0x41, // bytes 12-16: trailer
-    ])
+    ]
 }
 
 /// Apply performance settings to device
-pub fn apply_settings(device: &Device, settings: &Performance) -> Result<()> {
-    let report = make_combined_report(settings.dpi_stage, settings.polling_rate)?;
+pub fn apply_setting(device: &Device, settings: &Performance) -> Result<()> {
+    let report = make_combined_report(settings.dpi_stage, settings.polling_rate);
     device.send_feature_report(&report)?;
 
     Ok(())

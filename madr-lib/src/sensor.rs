@@ -4,44 +4,44 @@ use std::fmt;
 use std::str::FromStr;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
-pub enum SensorMode {
+pub enum Mode {
     #[default]
     Basic = 0,
     Competitive = 1,
     Max = 2,
 }
 
-impl fmt::Display for SensorMode {
+impl fmt::Display for Mode {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            SensorMode::Basic => write!(f, "basic"),
-            SensorMode::Competitive => write!(f, "competitive"),
-            SensorMode::Max => write!(f, "max"),
+            Mode::Basic => write!(f, "basic"),
+            Mode::Competitive => write!(f, "competitive"),
+            Mode::Max => write!(f, "max"),
         }
     }
 }
 
-impl FromStr for SensorMode {
+impl FromStr for Mode {
     type Err = MadRError;
 
     fn from_str(s: &str) -> Result<Self> {
         match s.to_lowercase().as_str() {
-            "basic" => Ok(SensorMode::Basic),
-            "competitive" => Ok(SensorMode::Competitive),
-            "max" => Ok(SensorMode::Max),
+            "basic" => Ok(Mode::Basic),
+            "competitive" => Ok(Mode::Competitive),
+            "max" => Ok(Mode::Max),
             _ => Err(MadRError::InvalidSensorSetting(s.into())),
         }
     }
 }
 
-impl TryFrom<u8> for SensorMode {
+impl TryFrom<u8> for Mode {
     type Error = MadRError;
 
     fn try_from(value: u8) -> Result<Self> {
         match value {
-            0 => Ok(SensorMode::Basic),
-            1 => Ok(SensorMode::Competitive),
-            2 => Ok(SensorMode::Max),
+            0 => Ok(Mode::Basic),
+            1 => Ok(Mode::Competitive),
+            2 => Ok(Mode::Max),
             _ => Err(MadRError::InvalidSensorSetting(value.to_string())),
         }
     }
@@ -49,7 +49,7 @@ impl TryFrom<u8> for SensorMode {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Sensor {
-    mode: SensorMode,
+    mode: Mode,
 }
 
 impl Sensor {
@@ -72,24 +72,24 @@ impl Sensor {
             return Err(MadRError::InvalidSensorFormat);
         }
 
-        let mode = SensorMode::try_from(data[10])?;
+        let mode = Mode::try_from(data[10])?;
         Ok(Self { mode })
     }
 
-    pub fn mode(&self) -> SensorMode {
+    pub fn mode(&self) -> Mode {
         self.mode
     }
 }
 
-fn get_magic_report(sensor_mode: SensorMode) -> Vec<u8> {
+fn get_magic_report(sensor_mode: Mode) -> Vec<u8> {
     let setting = sensor_mode as u8;
     vec![
         0x08,
         0x07,
         0x00,
         0x00,
-        0xb5,    // magic...
-        0x06,    // ...bytes
+        0xb5,                         // magic...
+        0x06,                         // ...bytes
         0x00,    // works with either 00 or 01? after factory reset 00 is correct though
         0x55,    // 55 - prev
         0x06,    // magic
@@ -105,7 +105,7 @@ fn get_magic_report(sensor_mode: SensorMode) -> Vec<u8> {
 }
 
 /// Apply sensor setting to device
-pub fn apply_setting(device: &Device, mode: SensorMode) -> Result<()> {
+pub fn apply_setting(device: &Device, mode: Mode) -> Result<()> {
     let report = get_magic_report(mode);
     device.send_feature_report(&report)?;
 

@@ -6,17 +6,14 @@ use colored::Colorize;
 
 use clap::{builder::PossibleValuesParser, value_parser, Parser, Subcommand};
 
-use madr_lib::battery::Battery;
-use madr_lib::debounce::Debounce;
-use madr_lib::performance::PollingRate;
-use madr_lib::sensor::Sensor;
-use madr_lib::sensor::SensorMode;
 use madr_lib::{
-    debounce,
+    battery::Battery,
+    debounce::{self, Debounce},
     device::Device,
     dpi,
-    performance::{self, Performance},
-    sensor, sleep,
+    performance::{self, Performance, PollingRate},
+    sensor::{self, Mode, Sensor},
+    sleep,
 };
 
 #[derive(Parser)]
@@ -136,7 +133,7 @@ fn main() -> Result<()> {
             Set::DpiStage { stage } => {
                 let settings = Performance::read(&device)?;
 
-                performance::apply_settings(
+                performance::apply_setting(
                     &device,
                     &Performance::new(stage, settings.polling_rate()),
                 )?;
@@ -153,14 +150,14 @@ fn main() -> Result<()> {
 
                 let new_rate = PollingRate::try_from(r)?;
                 let settings = Performance::read(&device)?;
-                performance::apply_settings(
+                performance::apply_setting(
                     &device,
                     &Performance::new(settings.dpi_stage(), new_rate),
                 )?;
             }
             Set::Sensor { preset } => {
-                let preset: SensorMode = preset.parse()?;
-                
+                let preset: Mode = preset.parse()?;
+
                 sensor::apply_setting(&device, preset)?;
             }
         },
@@ -205,9 +202,9 @@ fn main() -> Result<()> {
                 let s = Sensor::read(&device)?;
 
                 let colored_preset = match s.mode() {
-                    SensorMode::Basic => "basic".green(),
-                    SensorMode::Competitive => "competitive".cyan(),
-                    SensorMode::Max => "max".red(),
+                    Mode::Basic => "basic".green(),
+                    Mode::Competitive => "competitive".cyan(),
+                    Mode::Max => "max".red(),
                 };
 
                 println!("Sensor is set to {} mode", colored_preset);

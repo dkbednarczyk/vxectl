@@ -5,7 +5,7 @@ use std::str::FromStr;
 use crate::device::Device;
 use crate::{MadRError, Result};
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Rgb {
     r: u8,
     g: u8,
@@ -24,22 +24,22 @@ impl FromStr for Rgb {
     fn from_str(s: &str) -> Result<Self> {
         let parts: Vec<&str> = s.split(',').collect();
         if parts.len() != 3 {
-            return Err(MadRError::InvalidRgb(
+            return Err(MadRError::InvalidRgbValue(
                 "Invalid RGB format. Expected format: R,G,B".into(),
             ));
         }
 
         let r: u8 = parts[0]
             .parse()
-            .map_err(|_| MadRError::InvalidRgb("Invalid R value".into()))?;
+            .map_err(|_| MadRError::InvalidRgbValue("Invalid R value".into()))?;
 
         let g: u8 = parts[1]
             .parse()
-            .map_err(|_| MadRError::InvalidRgb("Invalid G value".into()))?;
-        
+            .map_err(|_| MadRError::InvalidRgbValue("Invalid G value".into()))?;
+
         let b: u8 = parts[2]
             .parse()
-            .map_err(|_| MadRError::InvalidRgb("Invalid B value".into()))?;
+            .map_err(|_| MadRError::InvalidRgbValue("Invalid B value".into()))?;
 
         Ok(Rgb { r, g, b })
     }
@@ -217,24 +217,26 @@ pub fn apply_dpi_setting(
     rgb: Option<&str>,
 ) -> Result<()> {
     if x_dpi.is_none() && rgb.is_none() {
-        return Err(MadRError::InvalidDpi(
+        return Err(MadRError::InvalidDpiSetting(
             "At least one of X DPI or RGB must be specified".into(),
         ));
     }
 
-    let report_index: u8 = (stage as f32 / 2.0).ceil() as u8;
+    let report_index: u8 = stage.div_ceil(2);
 
     if let Some(x_dpi_val) = x_dpi {
         let is_in_range = |x| x % 50 == 0 && (100..=30000).contains(&x);
 
         if !is_in_range(x_dpi_val) {
-            return Err(MadRError::InvalidDpi(
+            return Err(MadRError::InvalidDpiSetting(
                 "X DPI must be between 100 and 30000 and a multiple of 50".into(),
             ));
         }
 
-        if let Some(y_dpi_val) = y_dpi && !is_in_range(y_dpi_val) {
-            return Err(MadRError::InvalidDpi(
+        if let Some(y_dpi_val) = y_dpi
+            && !is_in_range(y_dpi_val)
+        {
+            return Err(MadRError::InvalidDpiSetting(
                 "Y DPI must be between 100 and 30000 and a multiple of 50".into(),
             ));
         }
