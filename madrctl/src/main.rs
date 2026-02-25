@@ -18,6 +18,7 @@ use madr_lib::{
 
 #[derive(Parser)]
 #[command(name = "madrctl")]
+#[command(version, long_about = None)]
 #[command(about = "Control your VXE MAD R series gaming mouse from the command line")]
 struct Cli {
     #[command(subcommand)]
